@@ -35,14 +35,14 @@ function initPreloader() {
             preloader.classList.add('hidden');
             document.body.classList.remove('loading');
             
-            // Trigger hero animations
+            // Trigger hero animations immediately
             const heroElements = document.querySelectorAll('.hero .reveal');
             heroElements.forEach((el, i) => {
                 setTimeout(() => {
                     el.classList.add('visible');
-                }, i * 100);
+                }, i * 50);
             });
-        }, 1600);
+        }, 900);
     });
 }
 
@@ -121,19 +121,15 @@ function initNavigation() {
 function initScrollReveal() {
     const observerOptions = {
         root: null,
-        rootMargin: '0px 0px -50px 0px',
-        threshold: 0.15
+        rootMargin: '0px 0px -30px 0px',
+        threshold: 0.1
     };
     
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            // Get delay from data attribute
-            const delay = parseInt(entry.target.dataset.delay || 0) * 100;
-            
             if (entry.isIntersecting) {
-                setTimeout(() => {
-                    entry.target.classList.add('visible');
-                }, delay);
+                // Use CSS transition-delay from data-delay attribute
+                entry.target.classList.add('visible');
             } else {
                 // Remove visible class when out of view to replay animation
                 entry.target.classList.remove('visible');
@@ -165,7 +161,7 @@ function initHeroTitleReveal() {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                const delay = initialLoad ? 1800 : 100;
+                const delay = initialLoad ? 1000 : 50;
                 initialLoad = false;
                 
                 setTimeout(() => {
@@ -201,14 +197,14 @@ function initVisualCardsAnimation() {
                     barFill.style.height = '0';
                     
                     setTimeout(() => {
-                        barFill.style.transition = 'height 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                        barFill.style.transition = 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
                         barFill.style.height = height;
-                    }, i * 100 + 100);
+                    }, i * 50);
                 });
                 
-                // Animate numbers
+                // Animate numbers after bars start
                 statValues.forEach((statEl, i) => {
-                    animateNumber(statEl, i * 200);
+                    animateNumber(statEl, 200 + i * 100);
                 });
             } else {
                 // Reset bars
@@ -220,7 +216,6 @@ function initVisualCardsAnimation() {
                 
                 // Reset numbers
                 statValues.forEach(statEl => {
-                    const target = statEl.dataset.target;
                     const prefix = statEl.dataset.prefix || '';
                     const suffix = statEl.dataset.suffix || '';
                     statEl.textContent = prefix + '0' + suffix;
@@ -236,41 +231,45 @@ function initVisualCardsAnimation() {
 }
 
 /**
- * Animate number counting
+ * Animate number counting - using requestAnimationFrame
  */
 function animateNumber(element, delay = 0) {
     const target = parseFloat(element.dataset.target);
     const prefix = element.dataset.prefix || '';
     const suffix = element.dataset.suffix || '';
-    const duration = 1500;
-    const steps = 60;
-    const increment = target / steps;
-    const stepDuration = duration / steps;
-    
-    let current = 0;
-    let step = 0;
+    const duration = 1000;
     
     setTimeout(() => {
-        const timer = setInterval(() => {
-            step++;
-            current += increment;
+        const startTime = performance.now();
+        
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            if (step >= steps) {
-                current = target;
-                clearInterval(timer);
-            }
+            // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
             
-            // Format number
             let displayValue;
             if (target < 0) {
-                // Negative number
-                displayValue = Math.abs(Math.floor(current));
+                displayValue = Math.abs(Math.round(target * easeProgress));
                 element.textContent = prefix + '-' + displayValue + suffix;
             } else {
-                displayValue = Math.floor(current);
+                displayValue = Math.round(target * easeProgress);
                 element.textContent = prefix + displayValue + suffix;
             }
-        }, stepDuration);
+            
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            } else {
+                if (target < 0) {
+                    element.textContent = prefix + '-' + Math.abs(target) + suffix;
+                } else {
+                    element.textContent = prefix + target + suffix;
+                }
+            }
+        }
+        
+        requestAnimationFrame(update);
     }, delay);
 }
 
@@ -289,12 +288,12 @@ function initCountUpAnimations() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 // Add delay on initial page load to sync with preloader
-                const baseDelay = initialLoad ? 2200 : 0;
+                const baseDelay = initialLoad ? 1200 : 0;
                 initialLoad = false;
                 
                 const elements = entry.target.querySelectorAll('.count-up');
                 elements.forEach((el, i) => {
-                    animateCountUp(el, baseDelay + i * 200);
+                    animateCountUp(el, baseDelay + i * 100);
                 });
             } else {
                 // Reset when out of view
@@ -316,37 +315,38 @@ function initCountUpAnimations() {
 }
 
 /**
- * Animate count up effect
+ * Animate count up effect - using requestAnimationFrame for smoothness
  */
 function animateCountUp(element, delay = 0) {
     const target = parseFloat(element.dataset.target);
     const prefix = element.dataset.prefix || '';
     const suffix = element.dataset.suffix || '';
-    const duration = 2000;
-    const frameDuration = 1000 / 60;
-    const totalFrames = Math.round(duration / frameDuration);
-    
-    let frame = 0;
+    const duration = 1200;
     
     // Reset first
     element.textContent = prefix + '0' + suffix;
     
     setTimeout(() => {
-        const counter = setInterval(() => {
-            frame++;
+        const startTime = performance.now();
+        
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            // Ease out quad for smooth deceleration
-            const progress = frame / totalFrames;
+            // Ease out cubic for smooth deceleration
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             const currentValue = Math.round(target * easeProgress);
             
             element.textContent = prefix + currentValue + suffix;
             
-            if (frame >= totalFrames) {
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            } else {
                 element.textContent = prefix + target + suffix;
-                clearInterval(counter);
             }
-        }, frameDuration);
+        }
+        
+        requestAnimationFrame(update);
     }, delay);
 }
 
@@ -454,7 +454,7 @@ function initParallax() {
 }
 
 /**
- * Button Ripple Effects
+ * Button Ripple Effects - Simplified
  */
 function initButtonEffects() {
     const buttons = document.querySelectorAll('.btn');
@@ -474,31 +474,27 @@ function initButtonEffects() {
             
             this.appendChild(ripple);
             
-            setTimeout(() => ripple.remove(), 600);
-        });
-        
-        // Magnetic effect on hover
-        btn.addEventListener('mousemove', function(e) {
-            const rect = this.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            
-            this.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px)`;
-        });
-        
-        btn.addEventListener('mouseleave', function() {
-            this.style.transform = '';
+            setTimeout(() => ripple.remove(), 500);
         });
     });
 }
 
 /**
- * Card Tilt Effect
+ * Card Tilt Effect - Smoother with RAF
  */
 function initCardTilt() {
     const cards = document.querySelectorAll('.result-card, .audience-card, .solution-feature');
     
     cards.forEach(card => {
+        let rafId = null;
+        let targetRotateX = 0;
+        let targetRotateY = 0;
+        let currentRotateX = 0;
+        let currentRotateY = 0;
+        
+        card.style.transition = 'box-shadow 0.2s ease, border-color 0.2s ease';
+        card.style.willChange = 'transform';
+        
         card.addEventListener('mousemove', function(e) {
             const rect = this.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -507,15 +503,40 @@ function initCardTilt() {
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
             
-            const rotateX = (y - centerY) / 25;
-            const rotateY = (centerX - x) / 25;
+            targetRotateX = (y - centerY) / 30;
+            targetRotateY = (centerX - x) / 30;
             
-            this.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+            if (!rafId) {
+                rafId = requestAnimationFrame(animate);
+            }
         });
         
         card.addEventListener('mouseleave', function() {
-            this.style.transform = '';
+            targetRotateX = 0;
+            targetRotateY = 0;
+            
+            if (!rafId) {
+                rafId = requestAnimationFrame(animate);
+            }
         });
+        
+        function animate() {
+            currentRotateX += (targetRotateX - currentRotateX) * 0.15;
+            currentRotateY += (targetRotateY - currentRotateY) * 0.15;
+            
+            const translateY = Math.abs(targetRotateX) > 0.1 || Math.abs(targetRotateY) > 0.1 ? -4 : 0;
+            
+            card.style.transform = `perspective(1000px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg) translateY(${translateY}px) translateZ(0)`;
+            
+            if (Math.abs(targetRotateX - currentRotateX) > 0.01 || Math.abs(targetRotateY - currentRotateY) > 0.01) {
+                rafId = requestAnimationFrame(animate);
+            } else {
+                rafId = null;
+                if (targetRotateX === 0 && targetRotateY === 0) {
+                    card.style.transform = '';
+                }
+            }
+        }
     });
 }
 
@@ -536,9 +557,9 @@ function initChartAnimation() {
                     bar.style.height = '0';
                     
                     setTimeout(() => {
-                        bar.style.transition = 'height 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                        bar.style.transition = 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
                         bar.style.height = bar.style.getPropertyValue('--height');
-                    }, i * 100 + 100);
+                    }, i * 60);
                 });
             } else {
                 // Reset when out of view
